@@ -1,17 +1,28 @@
 import { StatusBar } from "expo-status-bar";
-import { useState } from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import { useEffect, useState } from "react";
+import { Alert, Button, Image, StyleSheet, Text, View } from "react-native";
 import MapView, { Marker } from "react-native-maps";
+import * as Location from "expo-location";
 
 export default function App() {
-  const [localizacao, setLocalizacao] = useState(
-    {
-      latitude: -33.867886,
-      longitude: -63.987,
-      latitudeDelta: 10,
-      longitudeDelta: 10,
+  const [minhaLocalizacao, setMinhaLocalizacao] = useState(null);
+  useEffect(() => {
+    async function obterLocalizacao() {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status !== "granted") {
+        Alert.alert("Ops!", "Você não autorizou o uso da geolocalização");
+        return;
+      }
+      let localizacaoAtual = await Location.getCurrentPositionAsync({});
+
+      setMinhaLocalizacao(localizacaoAtual);
     }
-  )
+
+    obterLocalizacao();
+  }, []);
+
+  console.log(minhaLocalizacao);
+  const [localizacao, setLocalizacao] = useState(null);
   /* coordenadas para MapView */
   const regiaoInicialMapa = {
     // Brasil
@@ -27,28 +38,30 @@ export default function App() {
 
   /* Coordenadas para o Marker que sera aplicado ao Marker */
 
-const marcarLocal = (event) => {
-  console.log(event.nativeEvent);
-  setLocalizacao({
-    ...localizacao,
-    latitude: event.nativeEvent.coordinate.latitude,
-    longitude: event.nativeEvent.coordinate.longitude,
-  });
-}
+  const marcarLocal = () => {
+    setLocalizacao({
+      latitude: minhaLocalizacao.coords.latitude,
+      longitude: minhaLocalizacao.coords.longitude,
+      latitudeDelta: 0.02,
+      longitudeDelta: 0.01,
+    });
+  };
   return (
     <>
       <StatusBar />
       <View style={estilos.container}>
-        <MapView
-        onPress={marcarLocal}
-          mapType="standard"
-          style={estilos.mapa}
-          initialRegion={regiaoInicialMapa}
-          userInterfaceStyle="dark"
-          
-        >
-          <Marker coordinate={localizacao} />
-        </MapView>
+        <View style={estilos.viewBotao}>
+          <Button title="Onde estou ?" onPress={marcarLocal} />
+        </View>
+        <View style={estilos.viewMapa}>
+          <MapView
+            mapType="standard"
+            style={estilos.mapa}
+            region={localizacao ?? regiaoInicialMapa}
+          >
+            {localizacao && <Marker coordinate={localizacao} />}
+          </MapView>
+        </View>
       </View>
     </>
   );
@@ -61,5 +74,8 @@ const estilos = StyleSheet.create({
   mapa: {
     width: "100%",
     height: "100%",
+  },
+  viewBotao: {
+    marginTop: 50,
   },
 });
